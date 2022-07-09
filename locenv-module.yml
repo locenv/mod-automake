@@ -1,0 +1,6 @@
+name: automake
+version: -1
+program:
+  linux: libautomake.so
+  darwin: libautomake.dylib
+  win32: automake.dll

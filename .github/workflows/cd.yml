@@ -1,0 +1,74 @@
+name: CD
+on:
+  push:
+    tags:
+    - '*'
+jobs:
+  build:
+    name: Build
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, macos-11, windows-2022]
+        include:
+        - os: ubuntu-20.04
+          binary: target/release/libautomake.so
+          suffix: linux
+        - os: macos-11
+          binary: target/release/libautomake.dylib
+          suffix: darwin
+        - os: windows-2022
+          binary: target/release/automake.dll
+          suffix: win32
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v3
+    - name: Build
+      run: cargo build -r
+    - name: Upload module binary
+      uses: actions/upload-artifact@v3
+      with:
+        name: binary-${{ matrix.suffix }}
+        path: ${{ matrix.binary }}
+  release:
+    name: Release
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: write
+    needs: build
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v3
+    - name: Prepare package content
+      run: mkdir -pv package
+    - name: Transform module definition
+      run: |
+        require 'yaml'
+
+        mod = YAML.load_file('locenv-module.yml')
+        mod['version'] = Integer(ENV['GITHUB_REF_NAME'])
+
+        File.open('package/locenv-module.yml', 'w') { |f| f.write mod.to_yaml.gsub("---\n", '') }
+      shell: ruby {0}
+    - name: Download Linux binary
+      uses: actions/download-artifact@v3
+      with:
+        name: binary-linux
+        path: package
+    - name: Download macOS binary
+      uses: actions/download-artifact@v3
+      with:
+        name: binary-darwin
+        path: package
+    - name: Download Windows binary
+      uses: actions/download-artifact@v3
+      with:
+        name: binary-win32
+        path: package
+    - name: Create package
+      run: zip -r ../package.zip *
+      working-directory: package
+    - name: Create release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: package.zip
