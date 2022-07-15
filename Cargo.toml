@@ -7,5 +7,5 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-locenv = "0.1"
-locenv-macros = "0.1"
+locenv = "0.2"
+locenv-macros = "0.2"
